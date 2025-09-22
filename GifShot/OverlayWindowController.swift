@@ -4,6 +4,42 @@ import SwiftUI
 final class OverlayWindowController: NSWindowController {
   private var hostingView: OverlayHostingView<AnyView>?
 
+  convenience init(nsView contentView: NSView, screen: NSScreen) {
+    let frame = screen.frame
+    let style: NSWindow.StyleMask = [.borderless]
+    let window = OverlayWindow(
+      contentRect: frame,
+      styleMask: style,
+      backing: .buffered,
+      defer: false,
+      screen: screen
+    )
+    window.level = .screenSaver
+    window.isOpaque = false
+    window.backgroundColor = .clear
+    window.titleVisibility = .hidden
+    window.titlebarAppearsTransparent = true
+    window.ignoresMouseEvents = false
+    window.acceptsMouseMovedEvents = true
+    window.isMovableByWindowBackground = false
+    window.hasShadow = false
+    window.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
+    window.isReleasedWhenClosed = false
+    window.hidesOnDeactivate = false
+
+    self.init(window: window)
+
+    contentView.translatesAutoresizingMaskIntoConstraints = true
+    contentView.frame = frame
+    contentView.autoresizingMask = [.width, .height]
+    window.contentView = contentView
+
+    window.orderFrontRegardless()
+    window.makeKeyAndOrderFront(nil)
+    window.makeFirstResponder(contentView)
+    Log.overlay.info("OverlayWindow key=\(window.isKeyWindow) firstResponder=\(String(describing: window.firstResponder)) contentFrame=\(NSStringFromRect(contentView.frame))")
+  }
+
   init(content: AnyView, screen: NSScreen) {
     let frame = screen.frame
     let style: NSWindow.StyleMask = [.borderless]

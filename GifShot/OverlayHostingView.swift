@@ -7,7 +7,7 @@ final class OverlayHostingView<Content: View>: NSHostingView<Content> {
     window?.makeFirstResponder(self)
   }
   override func hitTest(_ point: NSPoint) -> NSView? {
-    // 透明領域でも自身でイベントを受ける
-    return self
+    // 子ビューにイベントを流す
+    return super.hitTest(point)
   }
 }

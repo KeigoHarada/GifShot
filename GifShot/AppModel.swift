@@ -81,7 +81,7 @@ final class AppModel: ObservableObject {
 
   private func showOverlay(on screen: NSScreen) {
     let frame = screen.frame
-    let view = SelectionCaptureRepresentable(
+    let nsView = SelectionCaptureView(
       screenFrame: frame,
       onComplete: { [weak self] rect in
         guard let self = self else { return }
@@ -98,8 +98,7 @@ final class AppModel: ObservableObject {
         self?.recordingState = .idle
       }
     )
-    let content = AnyView(view)
-    overlayController = OverlayWindowController(content: content, screen: screen)
+    overlayController = OverlayWindowController(nsView: nsView, screen: screen)
     overlayController?.showWindow(nil)
     if let window = overlayController?.window {
       window.orderFrontRegardless()
