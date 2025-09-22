@@ -81,7 +81,7 @@ final class AppModel: ObservableObject {
 
   private func showOverlay(on screen: NSScreen) {
     let frame = screen.frame
-    let view = SelectionOverlayView(
+    let view = SelectionCaptureRepresentable(
       screenFrame: frame,
       onComplete: { [weak self] rect in
         guard let self = self else { return }
