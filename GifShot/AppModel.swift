@@ -44,7 +44,7 @@ final class AppModel: ObservableObject {
   }
 
   func toggleRecording() {
-    Log.app.info("toggleRecording from state=\(String(describing: recordingState))")
+    Log.app.info("toggleRecording from state=\(String(describing: self.recordingState))")
     switch recordingState {
     case .idle, .completed, .failed:
       startSelection()

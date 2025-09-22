@@ -29,9 +29,12 @@ final class Recorder: NSObject {
     streamConfig.capturesAudio = false
     streamConfig.queueDepth = 8
 
-    Log.recorder.info("start capture fps=\(configuration.framesPerSecond) displayID=\(configuration.display.displayID)")
+    Log.recorder.info(
+      "start capture fps=\(configuration.framesPerSecond) displayID=\(configuration.display.displayID)"
+    )
     let stream = SCStream(filter: filter, configuration: streamConfig, delegate: self)
-    try stream.addStreamOutput(self, type: SCStreamOutputType.screen, sampleHandlerQueue: sampleQueue)
+    try stream.addStreamOutput(
+      self, type: SCStreamOutputType.screen, sampleHandlerQueue: sampleQueue)
     try await stream.startCapture()
     self.stream = stream
   }
