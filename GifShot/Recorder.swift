@@ -31,7 +31,8 @@ final class Recorder: NSObject {
     // 初期は全画面キャプチャ。矩形切り出しは後段のエンコードで適用予定
 
     let stream = SCStream(filter: filter, configuration: streamConfig, delegate: self)
-    try stream.addStreamOutput(self, type: SCStreamOutputType.screen, sampleHandlerQueue: sampleQueue)
+    try stream.addStreamOutput(
+      self, type: SCStreamOutputType.screen, sampleHandlerQueue: sampleQueue)
     try await stream.startCapture()
     self.stream = stream
   }
