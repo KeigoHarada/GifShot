@@ -17,16 +17,26 @@ final class HotkeyManager {
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         let statusInstall = InstallEventHandler(GetApplicationEventTarget(), hotKeyEventHandler, 1, &eventType, UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()), &eventHandlerRef)
-        guard statusInstall == noErr else { return false }
+        guard statusInstall == noErr else {
+            Log.hotkey.error("InstallEventHandler failed: \(statusInstall)")
+            return false
+        }
 
         let hotKeyID = EventHotKeyID(signature: OSType("GFSH".fourCharCode), id: UInt32(1))
         let statusRegister = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
-        return statusRegister == noErr
+        if statusRegister == noErr {
+            Log.hotkey.info("Registered hotkey: Cmd+Shift+6")
+            return true
+        } else {
+            Log.hotkey.error("RegisterEventHotKey failed: \(statusRegister)")
+            return false
+        }
     }
 
     func unregister() {
         if let hotKeyRef = hotKeyRef {
             UnregisterEventHotKey(hotKeyRef)
+            Log.hotkey.info("Unregistered hotkey")
             self.hotKeyRef = nil
         }
         if let eventHandlerRef = eventHandlerRef {
@@ -40,6 +50,7 @@ final class HotkeyManager {
     }
 
     fileprivate func handleHotKey() {
+        Log.hotkey.info("Hotkey pressed")
         onPressed()
     }
 }

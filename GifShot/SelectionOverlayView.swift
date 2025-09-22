@@ -26,13 +26,16 @@ struct SelectionOverlayView: View {
                         .onChanged { value in
                             if dragStart == nil {
                                 dragStart = value.startLocation
+                                Log.overlay.info("drag start: \(NSStringFromPoint(NSPoint(x: value.startLocation.x, y: value.startLocation.y)))")
                             }
                             dragCurrent = value.location
                         }
                         .onEnded { _ in
                             if let rect = selectionRect, rect.width > 2, rect.height > 2 {
+                                Log.overlay.info("drag end with rect: \(NSStringFromRect(NSRect(x: rect.origin.x, y: rect.origin.y, width: rect.width, height: rect.height)))")
                                 onComplete(rect.offsetBy(dx: screenFrame.minX, dy: screenFrame.minY))
                             } else {
+                                Log.overlay.info("drag cancelled (too small)")
                                 onCancel()
                             }
                         }

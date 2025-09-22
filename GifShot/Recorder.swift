@@ -28,11 +28,10 @@ final class Recorder: NSObject {
     streamConfig.showsCursor = true
     streamConfig.capturesAudio = false
     streamConfig.queueDepth = 8
-    // 初期は全画面キャプチャ。矩形切り出しは後段のエンコードで適用予定
 
+    Log.recorder.info("start capture fps=\(configuration.framesPerSecond) displayID=\(configuration.display.displayID)")
     let stream = SCStream(filter: filter, configuration: streamConfig, delegate: self)
-    try stream.addStreamOutput(
-      self, type: SCStreamOutputType.screen, sampleHandlerQueue: sampleQueue)
+    try stream.addStreamOutput(self, type: SCStreamOutputType.screen, sampleHandlerQueue: sampleQueue)
     try await stream.startCapture()
     self.stream = stream
   }
@@ -40,6 +39,7 @@ final class Recorder: NSObject {
   func stop() {
     if let stream = stream {
       Task { [weak self] in
+        Log.recorder.info("stop capture")
         try? await stream.stopCapture()
         guard let strongSelf = self else { return }
         try? stream.removeStreamOutput(strongSelf, type: SCStreamOutputType.screen)
@@ -60,6 +60,7 @@ extension Recorder: SCStreamOutput {
     else { return }
     let ciImage = CIImage(cvImageBuffer: pixelBuffer)
     guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return }
+    Log.recorder.debug("frame")
     onFrame?(cgImage)
   }
 }

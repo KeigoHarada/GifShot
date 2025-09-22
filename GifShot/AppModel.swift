@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import ScreenCaptureKit
 import SwiftUI
+import ScreenCaptureKit
 
 final class AppModel: ObservableObject {
   enum RecordingState {
@@ -24,10 +24,12 @@ final class AppModel: ObservableObject {
   init() {
     hotkeyManager = HotkeyManager(onPressed: { [weak self] in
       DispatchQueue.main.async {
+        Log.hotkey.info("Toggle recording by hotkey")
         self?.toggleRecording()
       }
     })
-    _ = hotkeyManager?.register()
+    let ok = hotkeyManager?.register() ?? false
+    Log.hotkey.info("Register hotkey result: \(ok)")
   }
 
   deinit {
@@ -42,6 +44,7 @@ final class AppModel: ObservableObject {
   }
 
   func toggleRecording() {
+    Log.app.info("toggleRecording from state=\(String(describing: recordingState))")
     switch recordingState {
     case .idle, .completed, .failed:
       startSelection()
@@ -49,9 +52,9 @@ final class AppModel: ObservableObject {
       recordingState = .idle
       hideOverlay()
     case .recording:
+      Log.recorder.info("Stop recording requested")
       recorder.stop()
       recordingState = .encoding
-      // 後続でエンコード処理へ
       recordingState = .idle
     case .encoding:
       break
@@ -63,6 +66,7 @@ final class AppModel: ObservableObject {
       recordingState = .failed("画面情報の取得に失敗しました")
       return
     }
+    Log.overlay.info("Start selection on screen frame=\(NSStringFromRect(screen.frame))")
     showOverlay(on: screen)
     recordingState = .selecting
   }
@@ -74,12 +78,14 @@ final class AppModel: ObservableObject {
       onComplete: { [weak self] rect in
         guard let self = self else { return }
         self.selectedRect = rect
+        Log.overlay.info("Selection completed rect=\(NSStringFromRect(rect))")
         self.hideOverlay()
         Task { @MainActor in
           await self.startRecording(on: screen)
         }
       },
       onCancel: { [weak self] in
+        Log.overlay.info("Selection canceled")
         self?.hideOverlay()
         self?.recordingState = .idle
       }
@@ -90,11 +96,15 @@ final class AppModel: ObservableObject {
     if let window = overlayController?.window {
       window.orderFrontRegardless()
       window.makeKeyAndOrderFront(nil)
+      Log.overlay.info("Overlay window shown and key: \(window.isKeyWindow)")
     }
     NSApp.activate(ignoringOtherApps: true)
   }
 
   private func hideOverlay() {
+    if let win = overlayController?.window {
+      Log.overlay.info("Hide overlay. wasKey=\(win.isKeyWindow)")
+    }
     overlayController?.close()
     overlayController = nil
   }
@@ -104,7 +114,6 @@ final class AppModel: ObservableObject {
     do {
       let displays = try await SCShareableContent.current.displays
 
-      // NSScreen → CGDirectDisplayID を取得
       let key = NSDeviceDescriptionKey("NSScreenNumber")
       let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
       let screenID = screenNumber.map { CGDirectDisplayID($0) }
@@ -122,11 +131,14 @@ final class AppModel: ObservableObject {
       let config = Recorder.Configuration(
         display: display, selectedRectInScreenSpace: selectedRect, framesPerSecond: 15)
       try await recorder.start(configuration: config) { [weak self] _ in
-        // フレーム受領。後続でバッファリングしてGIF化する
+        Log.recorder.debug("frame received")
+        // 後続でバッファリングしてGIF化する
       }
       recordingState = .recording
+      Log.recorder.info("recording started")
     } catch {
       recordingState = .failed("録画開始に失敗しました: \(error.localizedDescription)")
+      Log.recorder.error("failed to start: \(error.localizedDescription)")
     }
   }
 
