@@ -28,10 +28,22 @@ final class OverlayWindowController: NSWindowController {
         window.hidesOnDeactivate = false
 
         let hosting = NSHostingController(rootView: content)
-        window.contentViewController = hosting
         self.hostingController = hosting
 
         super.init(window: window)
+
+        if let contentView = window.contentView {
+            let view = hosting.view
+            view.translatesAutoresizingMaskIntoConstraints = true
+            view.frame = contentView.bounds
+            view.autoresizingMask = [.width, .height]
+            contentView.addSubview(view)
+        }
+
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(hosting.view)
+        Log.overlay.info("OverlayWindow key=\(window.isKeyWindow) firstResponder=\(String(describing: window.firstResponder))")
     }
 
     @available(*, unavailable)

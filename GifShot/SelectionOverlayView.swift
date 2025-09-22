@@ -20,9 +20,10 @@ struct SelectionOverlayView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             Color.black.opacity(0.2)
+                .contentShape(Rectangle())
                 .ignoresSafeArea()
                 .gesture(
-                    DragGesture(minimumDistance: 1)
+                    DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             if dragStart == nil {
                                 dragStart = value.startLocation
