@@ -61,8 +61,16 @@ final class AppModel: ObservableObject {
     }
   }
 
+  private func screenAtMouse() -> NSScreen? {
+    let mouse = NSEvent.mouseLocation
+    for screen in NSScreen.screens {
+      if screen.frame.contains(mouse) { return screen }
+    }
+    return NSScreen.main
+  }
+
   private func startSelection() {
-    guard let screen = NSScreen.main else {
+    guard let screen = screenAtMouse() else {
       recordingState = .failed("画面情報の取得に失敗しました")
       return
     }

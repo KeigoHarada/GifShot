@@ -2,46 +2,48 @@ import AppKit
 import SwiftUI
 
 final class OverlayWindowController: NSWindowController {
-    private var hostingView: OverlayHostingView<AnyView>?
+  private var hostingView: OverlayHostingView<AnyView>?
 
-    init(content: AnyView, screen: NSScreen) {
-        let frame = screen.frame
-        let style: NSWindow.StyleMask = [.borderless]
-        let window = OverlayWindow(
-            contentRect: frame,
-            styleMask: style,
-            backing: .buffered,
-            defer: false,
-            screen: screen
-        )
-        window.level = .screenSaver
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.ignoresMouseEvents = false
-        window.acceptsMouseMovedEvents = true
-        window.isMovableByWindowBackground = false
-        window.hasShadow = false
-        window.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
-        window.isReleasedWhenClosed = false
-        window.hidesOnDeactivate = false
+  init(content: AnyView, screen: NSScreen) {
+    let frame = screen.frame
+    let style: NSWindow.StyleMask = [.borderless]
+    let window = OverlayWindow(
+      contentRect: frame,
+      styleMask: style,
+      backing: .buffered,
+      defer: false,
+      screen: screen
+    )
+    window.level = .screenSaver
+    window.isOpaque = false
+    window.backgroundColor = .clear
+    window.titleVisibility = .hidden
+    window.titlebarAppearsTransparent = true
+    window.ignoresMouseEvents = false
+    window.acceptsMouseMovedEvents = true
+    window.isMovableByWindowBackground = false
+    window.hasShadow = false
+    window.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
+    window.isReleasedWhenClosed = false
+    window.hidesOnDeactivate = false
 
-        super.init(window: window)
+    super.init(window: window)
 
-        let hv = OverlayHostingView(rootView: content)
-        hv.translatesAutoresizingMaskIntoConstraints = true
-        hv.frame = frame
-        hv.autoresizingMask = [.width, .height]
-        window.contentView = hv
-        self.hostingView = hv
+    let hv = OverlayHostingView(rootView: content)
+    hv.translatesAutoresizingMaskIntoConstraints = true
+    hv.frame = frame
+    hv.autoresizingMask = [.width, .height]
+    window.contentView = hv
+    self.hostingView = hv
 
-        window.orderFrontRegardless()
-        window.makeKeyAndOrderFront(nil)
-        window.makeFirstResponder(hv)
-        Log.overlay.info("OverlayWindow key=\(window.isKeyWindow) firstResponder=\(String(describing: window.firstResponder)) hvFrame=\(NSStringFromRect(hv.frame))")
-    }
+    window.orderFrontRegardless()
+    window.makeKeyAndOrderFront(nil)
+    window.makeFirstResponder(hv)
+    Log.overlay.info(
+      "OverlayWindow key=\(window.isKeyWindow) firstResponder=\(String(describing: window.firstResponder)) hvFrame=\(NSStringFromRect(hv.frame))"
+    )
+  }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError() }
 }
