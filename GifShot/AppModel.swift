@@ -14,6 +14,21 @@ final class AppModel: ObservableObject {
 
     @Published var recordingState: RecordingState = .idle
 
+    private var hotkeyManager: HotkeyManager?
+
+    init() {
+        hotkeyManager = HotkeyManager(onPressed: { [weak self] in
+            DispatchQueue.main.async {
+                self?.toggleRecording()
+            }
+        })
+        _ = hotkeyManager?.register()
+    }
+
+    deinit {
+        hotkeyManager?.unregister()
+    }
+
     var isRecording: Bool {
         if case .recording = recordingState { return true }
         return false
