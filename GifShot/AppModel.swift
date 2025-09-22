@@ -16,6 +16,9 @@ final class AppModel: ObservableObject {
 
     private var hotkeyManager: HotkeyManager?
     private var overlayController: OverlayWindowController?
+    private let recorder = Recorder()
+
+    private var selectedRect: CGRect?
 
     init() {
         hotkeyManager = HotkeyManager(onPressed: { [weak self] in
@@ -29,6 +32,7 @@ final class AppModel: ObservableObject {
     deinit {
         hotkeyManager?.unregister()
         hideOverlay()
+        recorder.stop()
     }
 
     var isRecording: Bool {
@@ -43,8 +47,13 @@ final class AppModel: ObservableObject {
         case .selecting:
             recordingState = .idle
             hideOverlay()
-        case .recording, .encoding:
+        case .recording:
+            recorder.stop()
+            recordingState = .encoding
+            // 後続でエンコード処理へ
             recordingState = .idle
+        case .encoding:
+            break
         }
     }
 
@@ -63,9 +72,11 @@ final class AppModel: ObservableObject {
             screenFrame: frame,
             onComplete: { [weak self] rect in
                 guard let self = self else { return }
+                self.selectedRect = rect
                 self.hideOverlay()
-                self.recordingState = .recording
-                // 後続で選択領域rectを録画へ引き渡す
+                Task { @MainActor in
+                    await self.startRecording(on: screen)
+                }
             },
             onCancel: { [weak self] in
                 self?.hideOverlay()
@@ -82,6 +93,24 @@ final class AppModel: ObservableObject {
     private func hideOverlay() {
         overlayController?.close()
         overlayController = nil
+    }
+
+    @MainActor
+    private func startRecording(on screen: NSScreen) async {
+        do {
+            let displays = try await SCShareableContent.current.displays
+            guard let targetDisplay = displays.first(where: { $0.displayID == screen.displayID }) ?? displays.first else {
+                recordingState = .failed("ディスプレイの取得に失敗しました")
+                return
+            }
+            let config = Recorder.Configuration(display: targetDisplay, selectedRectInScreenSpace: selectedRect, framesPerSecond: 15)
+            try await recorder.start(configuration: config) { [weak self] _ in
+                // フレーム受領。後続でバッファリングしてGIF化する
+            }
+            recordingState = .recording
+        } catch {
+            recordingState = .failed("録画開始に失敗しました: \(error.localizedDescription)")
+        }
     }
 
     func quitApp() {
