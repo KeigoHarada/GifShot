@@ -20,13 +20,16 @@ final class OverlayWindowController: NSWindowController {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.ignoresMouseEvents = false
+        window.acceptsMouseMovedEvents = true
         window.isMovableByWindowBackground = false
         window.hasShadow = false
         window.collectionBehavior = [.fullScreenAuxiliary, .canJoinAllSpaces]
         window.isReleasedWhenClosed = false
+        window.hidesOnDeactivate = false
 
-        self.hostingController = NSHostingController(rootView: content)
-        window.contentView = hostingController?.view
+        let hosting = NSHostingController(rootView: content)
+        window.contentViewController = hosting
+        self.hostingController = hosting
 
         super.init(window: window)
     }

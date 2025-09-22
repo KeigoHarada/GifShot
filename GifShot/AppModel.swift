@@ -87,7 +87,10 @@ final class AppModel: ObservableObject {
     let content = AnyView(view)
     overlayController = OverlayWindowController(content: content, screen: screen)
     overlayController?.showWindow(nil)
-    overlayController?.window?.makeKeyAndOrderFront(nil)
+    if let window = overlayController?.window {
+      window.orderFrontRegardless()
+      window.makeKeyAndOrderFront(nil)
+    }
     NSApp.activate(ignoringOtherApps: true)
   }
 
