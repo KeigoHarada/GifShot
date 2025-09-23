@@ -4,7 +4,7 @@ import ScreenCaptureKit
 import SwiftUI
 
 final class AppModel: ObservableObject {
-  enum RecordingState {
+  enum RecordingState: Equatable {
     case idle
     case selecting
     case recording

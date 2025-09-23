@@ -23,6 +23,19 @@ struct GifShotApp: App {
         Text("GifShot")
           .font(.headline)
         Divider()
+        // 最大録画時間のプリセット
+        VStack(alignment: .leading, spacing: 4) {
+          Text("最大録画時間: \(appModel.maxDurationSeconds)s")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          HStack(spacing: 6) {
+            ForEach([15, 30, 60, 120, 300], id: \.self) { sec in
+              Button("\(sec)s") { appModel.updateMaxDuration(seconds: sec) }
+                .buttonStyle(.bordered)
+            }
+          }
+        }
+        Divider()
         Button(appModel.isRecording ? "録画停止" : "録画開始") {
           appModel.toggleRecording()
         }
