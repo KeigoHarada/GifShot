@@ -6,9 +6,16 @@ final class HotkeyManager {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
     private let onPressed: () -> Void
+    private let store = HotkeyStore()
 
     init(onPressed: @escaping () -> Void) {
         self.onPressed = onPressed
+    }
+
+    @discardableResult
+    func registerFromStore() -> Bool {
+        let cfg = store.load()
+        return register(keyCode: cfg.keyCode, modifiers: cfg.modifiersCarbon)
     }
 
     @discardableResult
@@ -25,12 +32,17 @@ final class HotkeyManager {
         let hotKeyID = EventHotKeyID(signature: OSType("GFSH".fourCharCode), id: UInt32(1))
         let statusRegister = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
         if statusRegister == noErr {
-            Log.hotkey.info("Registered hotkey: Cmd+Shift+6")
+            Log.hotkey.info("Registered hotkey: keyCode=\(keyCode) mod=\(modifiers)")
             return true
         } else {
             Log.hotkey.error("RegisterEventHotKey failed: \(statusRegister)")
             return false
         }
+    }
+
+    func saveAndRegister(keyCode: UInt32, modifiers: UInt32) {
+        store.save(HotkeyConfig(keyCode: keyCode, modifiersCarbon: modifiers))
+        _ = register(keyCode: keyCode, modifiers: modifiers)
     }
 
     func unregister() {
