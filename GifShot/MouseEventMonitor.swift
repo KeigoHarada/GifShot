@@ -23,9 +23,18 @@ final class MouseEventMonitor {
   }
 
   func stop() {
-    if let t = downToken { NSEvent.removeMonitor(t); downToken = nil }
-    if let t = dragToken { NSEvent.removeMonitor(t); dragToken = nil }
-    if let t = upToken { NSEvent.removeMonitor(t); upToken = nil }
+    if let t = downToken {
+      NSEvent.removeMonitor(t)
+      downToken = nil
+    }
+    if let t = dragToken {
+      NSEvent.removeMonitor(t)
+      dragToken = nil
+    }
+    if let t = upToken {
+      NSEvent.removeMonitor(t)
+      upToken = nil
+    }
   }
 
   deinit { stop() }

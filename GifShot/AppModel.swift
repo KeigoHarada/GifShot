@@ -16,12 +16,20 @@ final class AppModel: ObservableObject {
   @Published var recordingState: RecordingState = .idle
 
   private var hotkeyManager: HotkeyManager?
-  private var overlayController: OverlayWindowController?
   private let recorder = Recorder()
   private let screenshotService = ScreenshotService()
   private let saveService = SaveService()
   private let clipboardService = ClipboardService()
   private let mouseMonitor = MouseEventMonitor()
+
+  private struct OverlayItem {
+    let screen: NSScreen
+    let controller: OverlayWindowController
+    let view: SelectionCaptureView
+  }
+
+  private var overlayItems: [OverlayItem] = []
+  private var activeOverlayIndex: Int?
 
   private var selectedRect: CGRect?
 
@@ -38,7 +46,7 @@ final class AppModel: ObservableObject {
 
   deinit {
     hotkeyManager?.unregister()
-    hideOverlay()
+    hideOverlays()
     recorder.stop()
     mouseMonitor.stop()
   }
@@ -55,8 +63,8 @@ final class AppModel: ObservableObject {
       startSelection()
     case .selecting:
       recordingState = .idle
-      hideOverlay()
       mouseMonitor.stop()
+      hideOverlays()
     case .recording:
       Log.recorder.info("Stop recording requested")
       recorder.stop()
@@ -67,77 +75,89 @@ final class AppModel: ObservableObject {
     }
   }
 
-  private func screenAtMouse() -> NSScreen? {
-    let mouse = NSEvent.mouseLocation
-    for screen in NSScreen.screens {
-      if screen.frame.contains(mouse) { return screen }
-    }
-    return NSScreen.main
-  }
-
   private func startSelection() {
-    guard let screen = screenAtMouse() else {
-      recordingState = .failed("画面情報の取得に失敗しました")
-      return
-    }
-    Log.overlay.info("Start selection on screen frame=\(NSStringFromRect(screen.frame))")
-    showOverlay(on: screen)
+    Log.overlay.info("Start selection on all screens: count=\(NSScreen.screens.count)")
+    showOverlaysOnAllScreens()
     recordingState = .selecting
-  }
 
-  private func showOverlay(on screen: NSScreen) {
-    let frame = screen.frame
-    let nsView = SelectionCaptureView(
-      screenFrame: frame,
-      onComplete: { [weak self] rect in
-        guard let self = self else { return }
-        self.selectedRect = rect
-        Log.overlay.info("Selection completed rect=\(NSStringFromRect(rect))")
-        self.hideOverlay()
-        self.mouseMonitor.stop()
-        Task { @MainActor in
-          do {
-            let result = try await self.screenshotService.capture(rectInScreenSpace: rect, on: screen)
-            let url = try self.saveService.savePNG(image: result.image)
-            self.clipboardService.copyPNG(image: result.image)
-            self.recordingState = .completed(url)
-            Log.app.info("screenshot saved: \(url.path)")
-          } catch {
-            self.recordingState = .failed("スクリーンショットに失敗: \(error.localizedDescription)")
-            Log.app.error("screenshot failed: \(error.localizedDescription)")
+    mouseMonitor.start(
+      onDown: { [weak self] global in
+        guard let self else { return }
+        if self.activeOverlayIndex == nil {
+          if let idx = self.overlayItems.firstIndex(where: { $0.screen.frame.contains(global) }) {
+            self.activeOverlayIndex = idx
           }
         }
+        if let idx = self.activeOverlayIndex {
+          self.overlayItems[idx].view.beginGlobal(at: global)
+        }
       },
-      onCancel: { [weak self] in
-        Log.overlay.info("Selection canceled")
-        self?.hideOverlay()
-        self?.mouseMonitor.stop()
-        self?.recordingState = .idle
+      onDrag: { [weak self] global in
+        guard let self, let idx = self.activeOverlayIndex else { return }
+        self.overlayItems[idx].view.updateGlobal(to: global)
+      },
+      onUp: { [weak self] global in
+        guard let self, let idx = self.activeOverlayIndex else { return }
+        self.overlayItems[idx].view.endGlobal(at: global)
       }
-    )
-    overlayController = OverlayWindowController(nsView: nsView, screen: screen)
-    overlayController?.showWindow(nil)
-    if let window = overlayController?.window {
-      window.orderFrontRegardless()
-      window.makeKeyAndOrderFront(nil)
-      Log.overlay.info("Overlay window shown and key: \(window.isKeyWindow)")
-    }
-    NSApp.activate(ignoringOtherApps: true)
-
-    // フォールバック: グローバルイベントモニタ（他ディスプレイでも確実に動作）
-    mouseMonitor.start(
-      onDown: { [weak nsView] p in nsView?.beginGlobal(at: p) },
-      onDrag: { [weak nsView] p in nsView?.updateGlobal(to: p) },
-      onUp: { [weak nsView] p in nsView?.endGlobal(at: p) }
     )
   }
 
-  private func hideOverlay() {
-    if let win = overlayController?.window {
-      Log.overlay.info("Hide overlay. wasKey=\(win.isKeyWindow)")
+  private func showOverlaysOnAllScreens() {
+    hideOverlays()
+    NSApp.activate(ignoringOtherApps: true)
+
+    for screen in NSScreen.screens {
+      let frame = screen.frame
+      let view = SelectionCaptureView(
+        screenFrame: frame,
+        onComplete: { [weak self] rect in
+          guard let self = self else { return }
+          self.selectedRect = rect
+          Log.overlay.info("Selection completed rect=\(NSStringFromRect(rect)) on screen=\(NSStringFromRect(screen.frame))")
+          self.mouseMonitor.stop()
+          self.hideOverlays()
+          Task { @MainActor in
+            do {
+              let result = try await self.screenshotService.capture(rectInScreenSpace: rect, on: screen)
+              let url = try self.saveService.savePNG(image: result.image)
+              self.clipboardService.copyPNG(image: result.image)
+              self.recordingState = .completed(url)
+              Log.app.info("screenshot saved: \(url.path)")
+            } catch {
+              self.recordingState = .failed("スクリーンショットに失敗: \(error.localizedDescription)")
+              Log.app.error("screenshot failed: \(error.localizedDescription)")
+            }
+          }
+        },
+        onCancel: { [weak self] in
+          Log.overlay.info("Selection canceled on screen=\(NSStringFromRect(screen.frame))")
+          self?.mouseMonitor.stop()
+          self?.hideOverlays()
+          self?.recordingState = .idle
+        }
+      )
+      let controller = OverlayWindowController(nsView: view, screen: screen)
+      controller.showWindow(nil)
+      if let window = controller.window {
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+        Log.overlay.info("Overlay window shown and key: \(window.isKeyWindow) for screen=\(NSStringFromRect(screen.frame))")
+      }
+      let item = OverlayItem(screen: screen, controller: controller, view: view)
+      overlayItems.append(item)
     }
-    overlayController?.close()
-    overlayController = nil
+  }
+
+  private func hideOverlays() {
+    for item in overlayItems {
+      if let win = item.controller.window {
+        Log.overlay.info("Hide overlay. wasKey=\(win.isKeyWindow) for screen=\(NSStringFromRect(item.screen.frame))")
+      }
+      item.controller.close()
+    }
+    overlayItems.removeAll()
+    activeOverlayIndex = nil
   }
 
   @MainActor
