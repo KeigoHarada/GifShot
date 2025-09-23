@@ -14,7 +14,7 @@ final class OverlayWindowController: NSWindowController {
       defer: false,
       screen: screen
     )
-    window.level = .screenSaver
+    window.level = .modalPanel
     window.isOpaque = false
     window.backgroundColor = .clear
     window.titleVisibility = .hidden
@@ -34,6 +34,7 @@ final class OverlayWindowController: NSWindowController {
     contentView.autoresizingMask = [.width, .height]
     window.contentView = contentView
 
+    NSApp.activate(ignoringOtherApps: true)
     window.orderFrontRegardless()
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(contentView)
@@ -52,7 +53,7 @@ final class OverlayWindowController: NSWindowController {
       defer: false,
       screen: screen
     )
-    window.level = .screenSaver
+    window.level = .modalPanel
     window.isOpaque = false
     window.backgroundColor = .clear
     window.titleVisibility = .hidden
@@ -74,6 +75,7 @@ final class OverlayWindowController: NSWindowController {
     window.contentView = hv
     self.hostingView = hv
 
+    NSApp.activate(ignoringOtherApps: true)
     window.orderFrontRegardless()
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(hv)

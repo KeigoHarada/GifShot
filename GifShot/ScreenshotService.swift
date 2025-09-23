@@ -1,7 +1,7 @@
-import Foundation
 import AppKit
 import CoreImage
 import CoreMedia
+import Foundation
 import ScreenCaptureKit
 
 final class ScreenshotService: NSObject {
@@ -19,8 +19,13 @@ final class ScreenshotService: NSObject {
     let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
     let screenID = screenNumber.map { CGDirectDisplayID($0) }
 
-    guard let display = ((screenID != nil) ? displays.first(where: { $0.displayID == screenID! }) : displays.first) else {
-      throw NSError(domain: "ScreenshotService", code: -1, userInfo: [NSLocalizedDescriptionKey: "ディスプレイが見つかりません"])
+    guard
+      let display =
+        ((screenID != nil) ? displays.first(where: { $0.displayID == screenID! }) : displays.first)
+    else {
+      throw NSError(
+        domain: "ScreenshotService", code: -1,
+        userInfo: [NSLocalizedDescriptionKey: "ディスプレイが見つかりません"])
     }
 
     let filter = SCContentFilter(display: display, excludingWindows: [])
@@ -31,7 +36,8 @@ final class ScreenshotService: NSObject {
     config.capturesAudio = false
     config.queueDepth = 1
 
-    let receiver = SingleFrameReceiver(ciContext: ciContext, rectInScreenSpace: rectInScreenSpace, screen: screen)
+    let receiver = SingleFrameReceiver(
+      ciContext: ciContext, rectInScreenSpace: rectInScreenSpace, screen: screen)
     let stream = SCStream(filter: filter, configuration: config, delegate: receiver)
     try stream.addStreamOutput(receiver, type: .screen, sampleHandlerQueue: receiver.queue)
 
@@ -46,7 +52,8 @@ final class ScreenshotService: NSObject {
     Log.overlay.info("screenshot capture started")
 
     let cgImage = try await receiver.firstFrameCropped()
-    let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+    let nsImage = NSImage(
+      cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     return Result(image: nsImage, cgImage: cgImage)
   }
 }
@@ -71,7 +78,10 @@ private final class SingleFrameReceiver: NSObject, SCStreamOutput, SCStreamDeleg
     }
   }
 
-  func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of outputType: SCStreamOutputType) {
+  func stream(
+    _ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
+    of outputType: SCStreamOutputType
+  ) {
     guard outputType == .screen, let pixelBuffer = sampleBuffer.imageBuffer else { return }
     let ciImage = CIImage(cvImageBuffer: pixelBuffer)
 

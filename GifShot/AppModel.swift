@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import SwiftUI
 import ScreenCaptureKit
+import SwiftUI
 
 final class AppModel: ObservableObject {
   enum RecordingState {
@@ -93,7 +93,8 @@ final class AppModel: ObservableObject {
         self.hideOverlay()
         Task { @MainActor in
           do {
-            let result = try await self.screenshotService.capture(rectInScreenSpace: rect, on: screen)
+            let result = try await self.screenshotService.capture(
+              rectInScreenSpace: rect, on: screen)
             let url = try self.saveService.savePNG(image: result.image)
             self.clipboardService.copyPNG(image: result.image)
             self.recordingState = .completed(url)
