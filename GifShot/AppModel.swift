@@ -115,12 +115,24 @@ final class AppModel: ObservableObject {
         onComplete: { [weak self] rect in
           guard let self = self else { return }
           self.selectedRect = rect
-          Log.overlay.info("Selection completed rect=\(NSStringFromRect(rect)) on screen=\(NSStringFromRect(screen.frame))")
+          Log.overlay.info(
+            "Selection completed rect=\(NSStringFromRect(rect)) on screen=\(NSStringFromRect(frame))"
+          )
           self.mouseMonitor.stop()
           self.hideOverlays()
+
+          // ここで screen の値を送らず、必要情報に分解して渡す
+          let key = NSDeviceDescriptionKey("NSScreenNumber")
+          let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
+          let displayID = screenNumber.map { CGDirectDisplayID($0) }
+
           Task { @MainActor in
             do {
-              let result = try await self.screenshotService.capture(rectInScreenSpace: rect, on: screen)
+              let result = try await self.screenshotService.capture(
+                rectInScreenSpace: rect,
+                displayID: displayID ?? 0,
+                screenFrame: frame
+              )
               let url = try self.saveService.savePNG(image: result.image)
               self.clipboardService.copyPNG(image: result.image)
               self.notifier.notifySaved(fileURL: url)
@@ -133,7 +145,7 @@ final class AppModel: ObservableObject {
           }
         },
         onCancel: { [weak self] in
-          Log.overlay.info("Selection canceled on screen=\(NSStringFromRect(screen.frame))")
+          Log.overlay.info("Selection canceled on screen=\(NSStringFromRect(frame))")
           self?.mouseMonitor.stop()
           self?.hideOverlays()
           self?.recordingState = .idle
@@ -144,7 +156,9 @@ final class AppModel: ObservableObject {
       if let window = controller.window {
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
-        Log.overlay.info("Overlay window shown and key: \(window.isKeyWindow) for screen=\(NSStringFromRect(screen.frame))")
+        Log.overlay.info(
+          "Overlay window shown and key: \(window.isKeyWindow) for screen=\(NSStringFromRect(frame))"
+        )
       }
       let item = OverlayItem(screen: screen, controller: controller, view: view)
       overlayItems.append(item)
@@ -154,7 +168,9 @@ final class AppModel: ObservableObject {
   private func hideOverlays() {
     for item in overlayItems {
       if let win = item.controller.window {
-        Log.overlay.info("Hide overlay. wasKey=\(win.isKeyWindow) for screen=\(NSStringFromRect(item.screen.frame))")
+        Log.overlay.info(
+          "Hide overlay. wasKey=\(win.isKeyWindow) for screen=\(NSStringFromRect(item.screen.frame))"
+        )
       }
       item.controller.close()
     }

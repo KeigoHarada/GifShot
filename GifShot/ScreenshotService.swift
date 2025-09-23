@@ -1,7 +1,7 @@
+import Foundation
 import AppKit
 import CoreImage
 import CoreMedia
-import Foundation
 import ScreenCaptureKit
 
 final class ScreenshotService: NSObject {
@@ -12,20 +12,11 @@ final class ScreenshotService: NSObject {
 
   private let ciContext = CIContext(options: nil)
 
-  func capture(rectInScreenSpace: CGRect, on screen: NSScreen) async throws -> Result {
+  func capture(rectInScreenSpace: CGRect, displayID: CGDirectDisplayID, screenFrame: CGRect) async throws -> Result {
     let displays = try await SCShareableContent.current.displays
 
-    let key = NSDeviceDescriptionKey("NSScreenNumber")
-    let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
-    let screenID = screenNumber.map { CGDirectDisplayID($0) }
-
-    guard
-      let display =
-        ((screenID != nil) ? displays.first(where: { $0.displayID == screenID! }) : displays.first)
-    else {
-      throw NSError(
-        domain: "ScreenshotService", code: -1,
-        userInfo: [NSLocalizedDescriptionKey: "ディスプレイが見つかりません"])
+    guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first else {
+      throw NSError(domain: "ScreenshotService", code: -1, userInfo: [NSLocalizedDescriptionKey: "ディスプレイが見つかりません"])
     }
 
     let filter = SCContentFilter(display: display, excludingWindows: [])
@@ -36,8 +27,7 @@ final class ScreenshotService: NSObject {
     config.capturesAudio = false
     config.queueDepth = 1
 
-    let receiver = SingleFrameReceiver(
-      ciContext: ciContext, rectInScreenSpace: rectInScreenSpace, screen: screen)
+    let receiver = SingleFrameReceiver(ciContext: ciContext, rectInScreenSpace: rectInScreenSpace, screenFrame: screenFrame)
     let stream = SCStream(filter: filter, configuration: config, delegate: receiver)
     try stream.addStreamOutput(receiver, type: .screen, sampleHandlerQueue: receiver.queue)
 
@@ -52,8 +42,7 @@ final class ScreenshotService: NSObject {
     Log.overlay.info("screenshot capture started")
 
     let cgImage = try await receiver.firstFrameCropped()
-    let nsImage = NSImage(
-      cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+    let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     return Result(image: nsImage, cgImage: cgImage)
   }
 }
@@ -62,14 +51,14 @@ private final class SingleFrameReceiver: NSObject, SCStreamOutput, SCStreamDeleg
   let queue = DispatchQueue(label: "gifshot.screenshot.queue")
   private let ciContext: CIContext
   private let rectInScreenSpace: CGRect
-  private let screen: NSScreen
+  private let screenFrame: CGRect
 
   private var continuation: CheckedContinuation<CGImage, Error>?
 
-  init(ciContext: CIContext, rectInScreenSpace: CGRect, screen: NSScreen) {
+  init(ciContext: CIContext, rectInScreenSpace: CGRect, screenFrame: CGRect) {
     self.ciContext = ciContext
     self.rectInScreenSpace = rectInScreenSpace
-    self.screen = screen
+    self.screenFrame = screenFrame
   }
 
   func firstFrameCropped() async throws -> CGImage {
@@ -78,21 +67,18 @@ private final class SingleFrameReceiver: NSObject, SCStreamOutput, SCStreamDeleg
     }
   }
 
-  func stream(
-    _ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
-    of outputType: SCStreamOutputType
-  ) {
+  func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of outputType: SCStreamOutputType) {
     guard outputType == .screen, let pixelBuffer = sampleBuffer.imageBuffer else { return }
     let ciImage = CIImage(cvImageBuffer: pixelBuffer)
 
-    // 画面ポイント座標 → ピクセル座標へ変換
+    // 画面ポイント座標 → ピクセル座標へ変換（frameはポイントベース）
     let imageWidth = ciImage.extent.width
     let imageHeight = ciImage.extent.height
-    let scaleX = imageWidth / screen.frame.width
-    let scaleY = imageHeight / screen.frame.height
+    let scaleX = imageWidth / screenFrame.width
+    let scaleY = imageHeight / screenFrame.height
 
-    let x = (rectInScreenSpace.minX - screen.frame.minX) * scaleX
-    let y = (rectInScreenSpace.minY - screen.frame.minY) * scaleY
+    let x = (rectInScreenSpace.minX - screenFrame.minX) * scaleX
+    let y = (rectInScreenSpace.minY - screenFrame.minY) * scaleY
     let w = rectInScreenSpace.width * scaleX
     let h = rectInScreenSpace.height * scaleY
 
