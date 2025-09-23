@@ -71,7 +71,8 @@ final class SaveService {
     guard let data = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
     var stale = false
     do {
-      let url = try URL(resolvingBookmarkData: data, options: [.withSecurityScope], bookmarkDataIsStale: &stale)
+      let url = try URL(
+        resolvingBookmarkData: data, options: [.withSecurityScope], bookmarkDataIsStale: &stale)
       if url.startAccessingSecurityScopedResource() {
         return url
       }
@@ -80,14 +81,16 @@ final class SaveService {
   }
 
   private func storeBookmark(url: URL) {
-    if let data = try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil) {
+    if let data = try? url.bookmarkData(
+      options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+    {
       UserDefaults.standard.set(data, forKey: bookmarkKey)
     }
   }
 
   private func pickDirectory(initial: URL) -> URL? {
     var pickedURL: URL?
-    DispatchQueue.main.sync {
+    let presentPanel = {
       let panel = NSOpenPanel()
       panel.prompt = "選択"
       panel.message = "保存先フォルダを選択してください"
@@ -97,9 +100,13 @@ final class SaveService {
       panel.canCreateDirectories = true
       panel.directoryURL = initial.deletingLastPathComponent()
       panel.nameFieldStringValue = initial.lastPathComponent
-      if panel.runModal() == .OK, let url = panel.url {
-        pickedURL = url
-      }
+      NSApp.activate(ignoringOtherApps: true)
+      if panel.runModal() == .OK, let url = panel.url { pickedURL = url }
+    }
+    if Thread.isMainThread {
+      presentPanel()
+    } else {
+      DispatchQueue.main.sync { presentPanel() }
     }
     return pickedURL
   }
