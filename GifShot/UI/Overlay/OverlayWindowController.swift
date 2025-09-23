@@ -32,7 +32,8 @@ final class OverlayWindowController: NSWindowController {
     // フレームをスクリーン全域に強制
     window.setFrame(frame, display: true)
 
-    let container = NSView(frame: window.contentView?.bounds ?? NSRect(origin: .zero, size: frame.size))
+    let container = NSView(
+      frame: window.contentView?.bounds ?? NSRect(origin: .zero, size: frame.size))
     container.autoresizingMask = [.width, .height]
     window.contentView = container
 
@@ -45,7 +46,9 @@ final class OverlayWindowController: NSWindowController {
     window.orderFrontRegardless()
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(contentView)
-    Log.overlay.info("OverlayWindow key=\(window.isKeyWindow) winFrame=\(NSStringFromRect(window.frame)) screenFrame=\(NSStringFromRect(screen.frame)) contentBounds=\(NSStringFromRect(container.bounds)) subviewFrame=\(NSStringFromRect(contentView.frame))")
+    Log.overlay.info(
+      "OverlayWindow key=\(window.isKeyWindow) winFrame=\(NSStringFromRect(window.frame)) screenFrame=\(NSStringFromRect(screen.frame)) contentBounds=\(NSStringFromRect(container.bounds)) subviewFrame=\(NSStringFromRect(contentView.frame))"
+    )
   }
 
   init(content: AnyView, screen: NSScreen) {
@@ -76,7 +79,8 @@ final class OverlayWindowController: NSWindowController {
     // フレームをスクリーン全域に強制
     window.setFrame(frame, display: true)
 
-    let container = NSView(frame: window.contentView?.bounds ?? NSRect(origin: .zero, size: frame.size))
+    let container = NSView(
+      frame: window.contentView?.bounds ?? NSRect(origin: .zero, size: frame.size))
     container.autoresizingMask = [.width, .height]
     window.contentView = container
 
@@ -91,7 +95,9 @@ final class OverlayWindowController: NSWindowController {
     window.orderFrontRegardless()
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(hv)
-    Log.overlay.info("OverlayWindow key=\(window.isKeyWindow) winFrame=\(NSStringFromRect(window.frame)) screenFrame=\(NSStringFromRect(screen.frame)) containerBounds=\(NSStringFromRect(container.bounds)) hvFrame=\(NSStringFromRect(hv.frame))")
+    Log.overlay.info(
+      "OverlayWindow key=\(window.isKeyWindow) winFrame=\(NSStringFromRect(window.frame)) screenFrame=\(NSStringFromRect(screen.frame)) containerBounds=\(NSStringFromRect(container.bounds)) hvFrame=\(NSStringFromRect(hv.frame))"
+    )
   }
 
   @available(*, unavailable)

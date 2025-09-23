@@ -41,9 +41,5 @@ struct GifShotApp: App {
       }
       .padding(8)
     }
-    WindowGroup {
-      ContentView()
-        .environmentObject(appModel)
-    }
   }
 }
