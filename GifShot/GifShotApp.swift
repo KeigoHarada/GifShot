@@ -28,7 +28,10 @@ struct GifShotApp: App {
                 }
                 Button("保存フォルダを開く") {
                     if let dir = try? saveService.ensureDirectory() {
+                        Log.app.info("open dir: \(dir.path)")
                         NSWorkspace.shared.open(dir)
+                    } else {
+                        Log.app.error("open dir failed")
                     }
                 }
                 Divider()
