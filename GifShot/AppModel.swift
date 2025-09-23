@@ -106,6 +106,7 @@ final class AppModel: ObservableObject {
 
   private func showOverlaysOnAllScreens() {
     hideOverlays()
+
     NSApp.activate(ignoringOtherApps: true)
 
     for screen in NSScreen.screens {
@@ -121,7 +122,6 @@ final class AppModel: ObservableObject {
           self.mouseMonitor.stop()
           self.hideOverlays()
 
-          // ここで screen の値を送らず、必要情報に分解して渡す
           let key = NSDeviceDescriptionKey("NSScreenNumber")
           let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
           let displayID = screenNumber.map { CGDirectDisplayID($0) }
@@ -154,6 +154,7 @@ final class AppModel: ObservableObject {
       let controller = OverlayWindowController(nsView: view, screen: screen)
       controller.showWindow(nil)
       if let window = controller.window {
+        window.ignoresMouseEvents = false
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
         Log.overlay.info(

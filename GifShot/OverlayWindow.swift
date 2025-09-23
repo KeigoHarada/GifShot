@@ -6,6 +6,8 @@ final class OverlayWindow: NSWindow {
 
   private var dragLogSkip = 0
 
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
   override func sendEvent(_ event: NSEvent) {
     switch event.type {
     case .leftMouseDown: Log.overlay.info("window event: leftMouseDown")

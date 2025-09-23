@@ -1,7 +1,7 @@
-import Foundation
 import AppKit
 import CoreImage
 import CoreMedia
+import Foundation
 import ScreenCaptureKit
 
 final class ScreenshotService: NSObject {
