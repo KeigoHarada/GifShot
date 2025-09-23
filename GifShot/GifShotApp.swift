@@ -10,6 +10,12 @@ import SwiftUI
 @main
 struct GifShotApp: App {
     @StateObject private var appModel = AppModel()
+    private let saveService = SaveService()
+    private let notifier = NotifierService()
+
+    init() {
+        notifier.requestAuthorization()
+    }
 
     var body: some Scene {
         MenuBarExtra("GifShot", systemImage: appModel.isRecording ? "stop.circle" : "record.circle") {
@@ -19,6 +25,11 @@ struct GifShotApp: App {
                 Divider()
                 Button(appModel.isRecording ? "録画停止" : "録画開始") {
                     appModel.toggleRecording()
+                }
+                Button("保存フォルダを開く") {
+                    if let dir = try? saveService.ensureDirectory() {
+                        NSWorkspace.shared.open(dir)
+                    }
                 }
                 Divider()
                 Button("終了") {

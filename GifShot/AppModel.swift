@@ -21,6 +21,7 @@ final class AppModel: ObservableObject {
   private let saveService = SaveService()
   private let clipboardService = ClipboardService()
   private let mouseMonitor = MouseEventMonitor()
+  private let notifier = NotifierService()
 
   private struct OverlayItem {
     let screen: NSScreen
@@ -122,6 +123,7 @@ final class AppModel: ObservableObject {
               let result = try await self.screenshotService.capture(rectInScreenSpace: rect, on: screen)
               let url = try self.saveService.savePNG(image: result.image)
               self.clipboardService.copyPNG(image: result.image)
+              self.notifier.notifySaved(fileURL: url)
               self.recordingState = .completed(url)
               Log.app.info("screenshot saved: \(url.path)")
             } catch {
