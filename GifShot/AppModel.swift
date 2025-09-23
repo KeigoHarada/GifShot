@@ -185,7 +185,6 @@ final class AppModel: ObservableObject {
       let config = Recorder.Configuration(display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
       try await recorder.start(configuration: config) { [weak self] cgImage in
         guard let self = self, let selection = self.selectedRect, let screenFrame = self.currentScreenFrame else { return }
-        // 選択領域をピクセル座標に変換してクロップ
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
         let scaleX = width / screenFrame.width
@@ -222,7 +221,7 @@ final class AppModel: ObservableObject {
     }
     do {
       let url = try saveService.saveGIF(data: data)
-      clipboardService.copyGIF(data: data)
+      clipboardService.copyGIF(data: data, fileURL: url)
       notifier.notifySaved(fileURL: url)
       recordingState = .completed(url)
       Log.app.info("gif saved: \(url.path)")
