@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import ScreenCaptureKit
 import SwiftUI
+import ScreenCaptureKit
 
 final class AppModel: ObservableObject {
   enum RecordingState {
@@ -21,6 +21,7 @@ final class AppModel: ObservableObject {
   private let screenshotService = ScreenshotService()
   private let saveService = SaveService()
   private let clipboardService = ClipboardService()
+  private let mouseMonitor = MouseEventMonitor()
 
   private var selectedRect: CGRect?
 
@@ -39,6 +40,7 @@ final class AppModel: ObservableObject {
     hotkeyManager?.unregister()
     hideOverlay()
     recorder.stop()
+    mouseMonitor.stop()
   }
 
   var isRecording: Bool {
@@ -54,6 +56,7 @@ final class AppModel: ObservableObject {
     case .selecting:
       recordingState = .idle
       hideOverlay()
+      mouseMonitor.stop()
     case .recording:
       Log.recorder.info("Stop recording requested")
       recorder.stop()
@@ -91,10 +94,10 @@ final class AppModel: ObservableObject {
         self.selectedRect = rect
         Log.overlay.info("Selection completed rect=\(NSStringFromRect(rect))")
         self.hideOverlay()
+        self.mouseMonitor.stop()
         Task { @MainActor in
           do {
-            let result = try await self.screenshotService.capture(
-              rectInScreenSpace: rect, on: screen)
+            let result = try await self.screenshotService.capture(rectInScreenSpace: rect, on: screen)
             let url = try self.saveService.savePNG(image: result.image)
             self.clipboardService.copyPNG(image: result.image)
             self.recordingState = .completed(url)
@@ -108,6 +111,7 @@ final class AppModel: ObservableObject {
       onCancel: { [weak self] in
         Log.overlay.info("Selection canceled")
         self?.hideOverlay()
+        self?.mouseMonitor.stop()
         self?.recordingState = .idle
       }
     )
@@ -119,6 +123,13 @@ final class AppModel: ObservableObject {
       Log.overlay.info("Overlay window shown and key: \(window.isKeyWindow)")
     }
     NSApp.activate(ignoringOtherApps: true)
+
+    // フォールバック: グローバルイベントモニタ（他ディスプレイでも確実に動作）
+    mouseMonitor.start(
+      onDown: { [weak nsView] p in nsView?.beginGlobal(at: p) },
+      onDrag: { [weak nsView] p in nsView?.updateGlobal(to: p) },
+      onUp: { [weak nsView] p in nsView?.endGlobal(at: p) }
+    )
   }
 
   private func hideOverlay() {
@@ -131,7 +142,6 @@ final class AppModel: ObservableObject {
 
   @MainActor
   private func startRecording(on screen: NSScreen) async {
-    // いまはスクショモード優先のため未使用
     do {
       let _ = try await SCShareableContent.current.displays
     } catch {}

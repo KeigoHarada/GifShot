@@ -36,6 +36,7 @@ final class SelectionCaptureView: NSView {
 
   override func hitTest(_ point: NSPoint) -> NSView? { self }
 
+  // NSWindow内のイベント（メインディスプレイ用）
   override func mouseDown(with event: NSEvent) {
     let p = convert(event.locationInWindow, from: nil)
     dragStartInView = p
@@ -51,6 +52,34 @@ final class SelectionCaptureView: NSView {
   }
 
   override func mouseUp(with event: NSEvent) {
+    finishSelection()
+  }
+
+  // グローバル座標からの入力（サブディスプレイ用フォールバック）
+  func beginGlobal(at global: NSPoint) {
+    let p = convertGlobalToView(global)
+    dragStartInView = p
+    dragCurrentInView = p
+    needsDisplay = true
+  }
+
+  func updateGlobal(to global: NSPoint) {
+    let p = convertGlobalToView(global)
+    dragCurrentInView = p
+    needsDisplay = true
+  }
+
+  func endGlobal(at _: NSPoint) {
+    finishSelection()
+  }
+
+  private func convertGlobalToView(_ global: NSPoint) -> NSPoint {
+    let x = global.x - screenFrame.minX
+    let y = global.y - screenFrame.minY
+    return NSPoint(x: x, y: y)
+  }
+
+  private func finishSelection() {
     let start = dragStartInView
     let end = dragCurrentInView
     dragStartInView = nil
@@ -79,7 +108,6 @@ final class SelectionCaptureView: NSView {
     super.draw(dirtyRect)
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
 
-    // 半透明オーバーレイ
     ctx.setFillColor(NSColor.black.withAlphaComponent(0.2).cgColor)
     ctx.fill(bounds)
 
