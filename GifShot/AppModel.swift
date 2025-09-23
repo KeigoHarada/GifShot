@@ -210,11 +210,14 @@ final class AppModel: ObservableObject {
         let height = CGFloat(cgImage.height)
         let scaleX = width / screenFrame.width
         let scaleY = height / screenFrame.height
-        let x = (selection.minX - screenFrame.minX) * scaleX
-        let y = (selection.minY - screenFrame.minY) * scaleY
-        let w = selection.width * scaleX
-        let h = selection.height * scaleY
-        let cropRect = CGRect(x: round(x), y: round(y), width: round(w), height: round(h))
+        let w = max(1, round(selection.width * scaleX))
+        let h = max(1, round(selection.height * scaleY))
+        let x = max(0, round((selection.minX - screenFrame.minX) * scaleX))
+        // CGImageの原点（上基準）に合わせてYを反転
+        let yFromBottom = (selection.minY - screenFrame.minY) * scaleY
+        let y = max(0, round(height - yFromBottom - h))
+        let cropRect = CGRect(
+          x: min(x, width - 1), y: min(y, height - 1), width: min(w, width), height: min(h, height))
         if let cropped = cgImage.cropping(to: cropRect) {
           self.capturedFrames.append(cropped)
         }
@@ -222,7 +225,6 @@ final class AppModel: ObservableObject {
       recordingState = .recording
       Log.recorder.info("recording started")
 
-      // 自動停止タスク
       autoStopTask?.cancel()
       let duration = maxDurationSeconds
       autoStopTask = Task { [weak self] in
