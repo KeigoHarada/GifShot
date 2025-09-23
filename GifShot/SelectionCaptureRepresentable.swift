@@ -6,8 +6,7 @@ struct SelectionCaptureRepresentable: NSViewRepresentable {
   let onCancel: () -> Void
 
   func makeNSView(context: Context) -> SelectionCaptureView {
-    let v = SelectionCaptureView(
-      screenFrame: screenFrame, onComplete: onComplete, onCancel: onCancel)
+    let v = SelectionCaptureView(screenFrame: screenFrame, onComplete: onComplete, onCancel: onCancel)
     return v
   }
 
@@ -22,8 +21,7 @@ final class SelectionCaptureView: NSView {
   private var dragStartInView: NSPoint?
   private var dragCurrentInView: NSPoint?
 
-  init(screenFrame: CGRect, onComplete: @escaping (CGRect) -> Void, onCancel: @escaping () -> Void)
-  {
+  init(screenFrame: CGRect, onComplete: @escaping (CGRect) -> Void, onCancel: @escaping () -> Void) {
     self.screenFrame = screenFrame
     self.onComplete = onComplete
     self.onCancel = onCancel
@@ -36,12 +34,14 @@ final class SelectionCaptureView: NSView {
   required init?(coder: NSCoder) { fatalError() }
 
   override var acceptsFirstResponder: Bool { true }
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
   override func viewDidMoveToWindow() {
     super.viewDidMoveToWindow()
     if let win = window {
       frame = win.contentView?.bounds ?? .zero
       autoresizingMask = [.width, .height]
+      win.makeFirstResponder(self)
     }
   }
 
@@ -99,8 +99,7 @@ final class SelectionCaptureView: NSView {
       onCancel()
       return
     }
-    let rectInView = NSRect(
-      x: min(s.x, e.x), y: min(s.y, e.y), width: abs(s.x - e.x), height: abs(s.y - e.y))
+    let rectInView = NSRect(x: min(s.x, e.x), y: min(s.y, e.y), width: abs(s.x - e.x), height: abs(s.y - e.y))
     if rectInView.width < 2 || rectInView.height < 2 {
       Log.overlay.info("mouseUp too small, cancel")
       onCancel()
