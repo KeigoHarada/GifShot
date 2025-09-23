@@ -2,13 +2,40 @@ import AppKit
 import Foundation
 
 final class SaveService {
-  func ensureDirectory() throws -> URL {
+  private let bookmarkKey = "saveFolderBookmark"
+
+  // 現在の保存先（ブックマークがあればそれ、なければデフォルト提案パス）
+  func currentDirectoryPreferred() -> URL {
+    if let bookmarked = resolveBookmarkedURL() { return bookmarked }
     let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-    let dir = documents.appendingPathComponent("GifShot", isDirectory: true)
-    if !FileManager.default.fileExists(atPath: dir.path) {
-      try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    return documents.appendingPathComponent("GifShot", isDirectory: true)
+  }
+
+  // 初回は選択ダイアログを表示し、以降はブックマーク先を返す
+  func ensureDirectory() throws -> URL {
+    if let bookmarked = resolveBookmarkedURL() { return bookmarked }
+
+    let initial = currentDirectoryPreferred()
+    if let picked = pickDirectory(initial: initial) {
+      if !FileManager.default.fileExists(atPath: picked.path) {
+        try FileManager.default.createDirectory(at: picked, withIntermediateDirectories: true)
+      }
+      storeBookmark(url: picked)
+      return picked
     }
-    return dir
+    // ユーザーがキャンセルした場合はデフォルトフォルダを作成して使用
+    if !FileManager.default.fileExists(atPath: initial.path) {
+      try FileManager.default.createDirectory(at: initial, withIntermediateDirectories: true)
+    }
+    return initial
+  }
+
+  // 明示的に保存先を変更（メニューから呼ぶ）
+  func changeDirectory() {
+    let initial = currentDirectoryPreferred()
+    if let picked = pickDirectory(initial: initial) {
+      storeBookmark(url: picked)
+    }
   }
 
   func savePNG(image: NSImage) throws -> URL {
@@ -37,5 +64,43 @@ final class SaveService {
     let url = dir.appendingPathComponent(name)
     try data.write(to: url)
     return url
+  }
+
+  // MARK: - Security-scoped bookmarks
+  private func resolveBookmarkedURL() -> URL? {
+    guard let data = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
+    var stale = false
+    do {
+      let url = try URL(resolvingBookmarkData: data, options: [.withSecurityScope], bookmarkDataIsStale: &stale)
+      if url.startAccessingSecurityScopedResource() {
+        return url
+      }
+    } catch {}
+    return nil
+  }
+
+  private func storeBookmark(url: URL) {
+    if let data = try? url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil) {
+      UserDefaults.standard.set(data, forKey: bookmarkKey)
+    }
+  }
+
+  private func pickDirectory(initial: URL) -> URL? {
+    var pickedURL: URL?
+    DispatchQueue.main.sync {
+      let panel = NSOpenPanel()
+      panel.prompt = "選択"
+      panel.message = "保存先フォルダを選択してください"
+      panel.canChooseFiles = false
+      panel.canChooseDirectories = true
+      panel.allowsMultipleSelection = false
+      panel.canCreateDirectories = true
+      panel.directoryURL = initial.deletingLastPathComponent()
+      panel.nameFieldStringValue = initial.lastPathComponent
+      if panel.runModal() == .OK, let url = panel.url {
+        pickedURL = url
+      }
+    }
+    return pickedURL
   }
 }

@@ -23,7 +23,23 @@ struct GifShotApp: App {
         Text("GifShot")
           .font(.headline)
         Divider()
-        // 最大録画時間のプリセット
+        // 保存先表示と変更
+        VStack(alignment: .leading, spacing: 4) {
+          Text("保存先: \(saveService.currentDirectoryPreferred().path)")
+            .font(.caption2)
+            .lineLimit(2)
+            .truncationMode(.middle)
+          HStack {
+            Button("保存先を変更…") { saveService.changeDirectory() }
+            Button("保存フォルダを開く") {
+              let dir = saveService.currentDirectoryPreferred()
+              Log.app.info("open dir: \(dir.path)")
+              NSWorkspace.shared.open(dir)
+            }
+          }
+        }
+        Divider()
+        // 最大録画時間
         VStack(alignment: .leading, spacing: 4) {
           Text("最大録画時間: \(appModel.maxDurationSeconds)s")
             .font(.caption)
@@ -38,14 +54,6 @@ struct GifShotApp: App {
         Divider()
         Button(appModel.isRecording ? "録画停止" : "録画開始") {
           appModel.toggleRecording()
-        }
-        Button("保存フォルダを開く") {
-          if let dir = try? saveService.ensureDirectory() {
-            Log.app.info("open dir: \(dir.path)")
-            NSWorkspace.shared.open(dir)
-          } else {
-            Log.app.error("open dir failed")
-          }
         }
         Divider()
         Button("終了") {
