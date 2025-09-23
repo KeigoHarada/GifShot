@@ -27,6 +27,7 @@ final class SelectionCaptureView: NSView {
     self.onCancel = onCancel
     super.init(frame: .zero)
     wantsLayer = true
+    postsFrameChangedNotifications = true
   }
 
   @available(*, unavailable)
@@ -34,9 +35,16 @@ final class SelectionCaptureView: NSView {
 
   override var acceptsFirstResponder: Bool { true }
 
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    if let win = window {
+      frame = win.contentView?.bounds ?? .zero
+      autoresizingMask = [.width, .height]
+    }
+  }
+
   override func hitTest(_ point: NSPoint) -> NSView? { self }
 
-  // NSWindow内のイベント（メインディスプレイ用）
   override func mouseDown(with event: NSEvent) {
     let p = convert(event.locationInWindow, from: nil)
     dragStartInView = p
@@ -55,7 +63,6 @@ final class SelectionCaptureView: NSView {
     finishSelection()
   }
 
-  // グローバル座標からの入力（サブディスプレイ用フォールバック）
   func beginGlobal(at global: NSPoint) {
     let p = convertGlobalToView(global)
     dragStartInView = p
@@ -74,9 +81,9 @@ final class SelectionCaptureView: NSView {
   }
 
   private func convertGlobalToView(_ global: NSPoint) -> NSPoint {
-    let x = global.x - screenFrame.minX
-    let y = global.y - screenFrame.minY
-    return NSPoint(x: x, y: y)
+    let windowPoint = convertFromScreen(NSRect(origin: global, size: .zero)).origin
+    let p = convert(windowPoint, from: nil)
+    return p
   }
 
   private func finishSelection() {
@@ -96,12 +103,16 @@ final class SelectionCaptureView: NSView {
       onCancel()
       return
     }
-    let rectInScreen = NSRect(x: rectInView.origin.x + screenFrame.minX,
-                              y: rectInView.origin.y + screenFrame.minY,
-                              width: rectInView.width,
-                              height: rectInView.height)
+    let rectInScreen = convertToScreen(rectInView)
     Log.overlay.info("mouseUp rect: \(NSStringFromRect(rectInScreen))")
     onComplete(rectInScreen)
+  }
+
+  private func convertToScreen(_ rect: NSRect) -> NSRect {
+    var r = rect
+    r.origin = convert(r.origin, to: nil)
+    r = convertToScreen(r)
+    return r
   }
 
   override func draw(_ dirtyRect: NSRect) {
