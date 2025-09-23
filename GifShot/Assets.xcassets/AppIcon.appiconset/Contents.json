@@ -1,7 +1,6 @@
 {
   "images" : [
     {
-      "filename" : "Gemini_Generated_Image_dliz5ldliz5ldliz.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
@@ -49,7 +48,8 @@
     {
       "idiom" : "mac",
       "scale" : "2x",
-      "size" : "512x512"
+      "size" : "512x512",
+      "filename" : "Gemini_Generated_Image_dliz5ldliz5ldliz.png"
     }
   ],
   "info" : {
