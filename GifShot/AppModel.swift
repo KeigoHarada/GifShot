@@ -14,6 +14,7 @@ final class AppModel: ObservableObject {
   }
 
   @Published var recordingState: RecordingState = .idle
+  @Published var maxDurationSeconds: Int
 
   private var hotkeyManager: HotkeyManager?
   private let recorder = Recorder()
@@ -37,8 +38,15 @@ final class AppModel: ObservableObject {
   private var currentDisplayID: CGDirectDisplayID?
   private var capturedFrames: [CGImage] = []
   private let targetFps: Int = 15
+  private var autoStopTask: Task<Void, Never>?
+
+  private let maxDurationKey = "maxDurationSeconds"
 
   init() {
+    let stored = UserDefaults.standard.integer(forKey: maxDurationKey)
+    let initial = stored == 0 ? 60 : stored
+    self.maxDurationSeconds = min(max(1, initial), 300)
+
     hotkeyManager = HotkeyManager(onPressed: { [weak self] in
       DispatchQueue.main.async {
         Log.hotkey.info("Toggle recording by hotkey")
@@ -54,11 +62,18 @@ final class AppModel: ObservableObject {
     hideOverlays()
     recorder.stop()
     mouseMonitor.stop()
+    autoStopTask?.cancel()
   }
 
   var isRecording: Bool {
     if case .recording = recordingState { return true }
     return false
+  }
+
+  func updateMaxDuration(seconds: Int) {
+    let clamped = min(max(1, seconds), 300)
+    maxDurationSeconds = clamped
+    UserDefaults.standard.set(clamped, forKey: maxDurationKey)
   }
 
   func toggleRecording() {
@@ -72,6 +87,8 @@ final class AppModel: ObservableObject {
       hideOverlays()
     case .recording:
       Log.recorder.info("Stop recording requested")
+      autoStopTask?.cancel()
+      autoStopTask = nil
       recorder.stop()
       recordingState = .encoding
       encodeAndFinish()
@@ -192,7 +209,7 @@ final class AppModel: ObservableObject {
         let x = (selection.minX - screenFrame.minX) * scaleX
         let y = (selection.minY - screenFrame.minY) * scaleY
         let w = selection.width * scaleX
-        let h = selection.height * scaleY
+        let h = selection.height * scaleX  // keep aspect; use X scale for consistency
         let cropRect = CGRect(x: floor(x), y: floor(y), width: floor(w), height: floor(h))
         if let cropped = cgImage.cropping(to: cropRect) {
           self.capturedFrames.append(cropped)
@@ -200,6 +217,18 @@ final class AppModel: ObservableObject {
       }
       recordingState = .recording
       Log.recorder.info("recording started")
+
+      // 自動停止タスク
+      autoStopTask?.cancel()
+      let duration = maxDurationSeconds
+      autoStopTask = Task { [weak self] in
+        try? await Task.sleep(nanoseconds: UInt64(duration) * 1_000_000_000)
+        await MainActor.run {
+          guard let self = self, self.recordingState == .recording else { return }
+          Log.recorder.info("auto stop after \(duration)s")
+          self.toggleRecording()
+        }
+      }
     } catch {
       recordingState = .failed("録画開始に失敗しました: \(error.localizedDescription)")
       Log.recorder.error("failed to start: \(error.localizedDescription)")
