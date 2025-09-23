@@ -194,14 +194,18 @@ final class AppModel: ObservableObject {
     }
     do {
       let displays = try await SCShareableContent.current.displays
-      guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first else {
+      guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first
+      else {
         recordingState = .failed("ディスプレイの取得に失敗しました")
         return
       }
       capturedFrames.removeAll(keepingCapacity: true)
-      let config = Recorder.Configuration(display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
+      let config = Recorder.Configuration(
+        display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
       try await recorder.start(configuration: config) { [weak self] cgImage in
-        guard let self = self, let selection = self.selectedRect, let screenFrame = self.currentScreenFrame else { return }
+        guard let self = self, let selection = self.selectedRect,
+          let screenFrame = self.currentScreenFrame
+        else { return }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
         let scaleX = width / screenFrame.width
@@ -209,8 +213,8 @@ final class AppModel: ObservableObject {
         let x = (selection.minX - screenFrame.minX) * scaleX
         let y = (selection.minY - screenFrame.minY) * scaleY
         let w = selection.width * scaleX
-        let h = selection.height * scaleX  // keep aspect; use X scale for consistency
-        let cropRect = CGRect(x: floor(x), y: floor(y), width: floor(w), height: floor(h))
+        let h = selection.height * scaleY
+        let cropRect = CGRect(x: round(x), y: round(y), width: round(w), height: round(h))
         if let cropped = cgImage.cropping(to: cropRect) {
           self.capturedFrames.append(cropped)
         }

@@ -9,6 +9,7 @@ final class SaveService {
       return bookmarked
     }
 
+    // ユーザーのホーム直下のDocuments/GifShot
     let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let dir = documents.appendingPathComponent("GifShot", isDirectory: true)
 
@@ -18,7 +19,6 @@ final class SaveService {
       }
       return dir
     } catch {
-      // 権限で失敗した場合はユーザーに選択してもらう
       if let picked = pickDirectory(initial: documents) {
         storeBookmark(url: picked)
         return picked
