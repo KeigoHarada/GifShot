@@ -22,7 +22,9 @@ final class GifEncoder {
 
   func start(expectedFrameCount: Int = 0) {
     guard !initialized else { return }
-    dest = CGImageDestinationCreateWithData(data, UTType.gif.identifier as CFString, expectedFrameCount == 0 ? 1 : expectedFrameCount, nil)
+    dest = CGImageDestinationCreateWithData(
+      data, UTType.gif.identifier as CFString, expectedFrameCount == 0 ? 1 : expectedFrameCount, nil
+    )
     if let dest = dest {
       CGImageDestinationSetProperties(dest, gifProps as CFDictionary)
       initialized = true

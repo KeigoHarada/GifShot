@@ -15,6 +15,7 @@ final class ClipboardService {
   func copyGIF(data: Data) {
     let pb = NSPasteboard.general
     pb.clearContents()
-    pb.setData(data, forType: .gif)
+    let gifType = NSPasteboard.PasteboardType("com.compuserve.gif")
+    pb.setData(data, forType: gifType)
   }
 }
