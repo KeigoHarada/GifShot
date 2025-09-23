@@ -27,10 +27,7 @@ GIF録画ツール（macOS 13+）。
 ### 保存先と永続化
 
 - 初回起動時（または未設定時）に保存先フォルダを選択（推奨: `~/Documents/GifShot`）
-- 選択先はセキュリティスコープ付きブックマークとして UserDefaults に保存
-  - キー: `saveFolderBookmark`
 - 最大録画時間は UserDefaults に保存
-  - キー: `maxDurationSeconds`
 
 ### クリップボード
 
