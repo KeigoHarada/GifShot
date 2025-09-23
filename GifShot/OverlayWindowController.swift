@@ -4,7 +4,7 @@ import SwiftUI
 final class OverlayWindowController: NSWindowController {
   private var hostingView: OverlayHostingView<AnyView>?
 
-  convenience init(nsView contentView: NSView, screen: NSScreen) {
+  init(nsView contentView: NSView, screen: NSScreen) {
     let frame = screen.frame
     let style: NSWindow.StyleMask = [.borderless]
     let window = OverlayWindow(
@@ -27,7 +27,7 @@ final class OverlayWindowController: NSWindowController {
     window.isReleasedWhenClosed = false
     window.hidesOnDeactivate = false
 
-    self.init(window: window)
+    super.init(window: window)
 
     contentView.translatesAutoresizingMaskIntoConstraints = true
     contentView.frame = frame
@@ -37,7 +37,9 @@ final class OverlayWindowController: NSWindowController {
     window.orderFrontRegardless()
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(contentView)
-    Log.overlay.info("OverlayWindow key=\(window.isKeyWindow) firstResponder=\(String(describing: window.firstResponder)) contentFrame=\(NSStringFromRect(contentView.frame))")
+    Log.overlay.info(
+      "OverlayWindow key=\(window.isKeyWindow) firstResponder=\(String(describing: window.firstResponder)) contentFrame=\(NSStringFromRect(contentView.frame))"
+    )
   }
 
   init(content: AnyView, screen: NSScreen) {
