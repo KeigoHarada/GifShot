@@ -75,6 +75,10 @@ final class AppModel: ObservableObject {
     UserDefaults.standard.set(clamped, forKey: maxDurationKey)
   }
 
+  func quitApp() {
+    NSApp.terminate(nil)
+  }
+
   func toggleRecording() {
     Log.app.info("toggleRecording from state=\(String(describing: self.recordingState))")
     switch recordingState {
