@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import SwiftUI
 import ScreenCaptureKit
+import SwiftUI
 
 final class AppModel: ObservableObject {
   enum RecordingState {

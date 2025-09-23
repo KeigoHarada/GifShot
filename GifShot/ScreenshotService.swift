@@ -10,13 +10,18 @@ final class ScreenshotService: NSObject {
     let cgImage: CGImage
   }
 
-  private let ciContext = CIContext(options: nil)
+  private let ciContext = CIContext(options: [.useSoftwareRenderer: true])
 
-  func capture(rectInScreenSpace: CGRect, displayID: CGDirectDisplayID, screenFrame: CGRect) async throws -> Result {
+  func capture(rectInScreenSpace: CGRect, displayID: CGDirectDisplayID, screenFrame: CGRect)
+    async throws -> Result
+  {
     let displays = try await SCShareableContent.current.displays
 
-    guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first else {
-      throw NSError(domain: "ScreenshotService", code: -1, userInfo: [NSLocalizedDescriptionKey: "ディスプレイが見つかりません"])
+    guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first
+    else {
+      throw NSError(
+        domain: "ScreenshotService", code: -1,
+        userInfo: [NSLocalizedDescriptionKey: "ディスプレイが見つかりません"])
     }
 
     let filter = SCContentFilter(display: display, excludingWindows: [])
@@ -27,7 +32,8 @@ final class ScreenshotService: NSObject {
     config.capturesAudio = false
     config.queueDepth = 1
 
-    let receiver = SingleFrameReceiver(ciContext: ciContext, rectInScreenSpace: rectInScreenSpace, screenFrame: screenFrame)
+    let receiver = SingleFrameReceiver(
+      ciContext: ciContext, rectInScreenSpace: rectInScreenSpace, screenFrame: screenFrame)
     let stream = SCStream(filter: filter, configuration: config, delegate: receiver)
     try stream.addStreamOutput(receiver, type: .screen, sampleHandlerQueue: receiver.queue)
 
@@ -42,7 +48,8 @@ final class ScreenshotService: NSObject {
     Log.overlay.info("screenshot capture started")
 
     let cgImage = try await receiver.firstFrameCropped()
-    let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+    let nsImage = NSImage(
+      cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     return Result(image: nsImage, cgImage: cgImage)
   }
 }
@@ -67,7 +74,10 @@ private final class SingleFrameReceiver: NSObject, SCStreamOutput, SCStreamDeleg
     }
   }
 
-  func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of outputType: SCStreamOutputType) {
+  func stream(
+    _ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
+    of outputType: SCStreamOutputType
+  ) {
     guard outputType == .screen, let pixelBuffer = sampleBuffer.imageBuffer else { return }
     let ciImage = CIImage(cvImageBuffer: pixelBuffer)
 
@@ -83,7 +93,7 @@ private final class SingleFrameReceiver: NSObject, SCStreamOutput, SCStreamDeleg
     let h = rectInScreenSpace.height * scaleY
 
     let cropRect = CGRect(x: x, y: y, width: w, height: h)
-    let cropped = ciImage.cropped(to: cropRect)
+    let cropped = CIImage(cvImageBuffer: pixelBuffer).cropped(to: cropRect)
     guard let cgImage = ciContext.createCGImage(cropped, from: cropped.extent) else { return }
 
     if let cont = continuation {
