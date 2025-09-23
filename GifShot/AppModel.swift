@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import ScreenCaptureKit
 import SwiftUI
+import ScreenCaptureKit
 
 final class AppModel: ObservableObject {
   enum RecordingState {
@@ -18,6 +18,9 @@ final class AppModel: ObservableObject {
   private var hotkeyManager: HotkeyManager?
   private var overlayController: OverlayWindowController?
   private let recorder = Recorder()
+  private let screenshotService = ScreenshotService()
+  private let saveService = SaveService()
+  private let clipboardService = ClipboardService()
 
   private var selectedRect: CGRect?
 
@@ -88,8 +91,18 @@ final class AppModel: ObservableObject {
         self.selectedRect = rect
         Log.overlay.info("Selection completed rect=\(NSStringFromRect(rect))")
         self.hideOverlay()
-        Task { @MainActor in
-          await self.startRecording(on: screen)
+        // スクショ撮影
+        if let result = self.screenshotService.capture(rectInScreenSpace: rect, on: screen) {
+          do {
+            let url = try self.saveService.savePNG(image: result.image)
+            self.clipboardService.copyPNG(image: result.image)
+            self.recordingState = .completed(url)
+            Log.app.info("screenshot saved: \(url.path)")
+          } catch {
+            self.recordingState = .failed("保存に失敗: \(error.localizedDescription)")
+          }
+        } else {
+          self.recordingState = .failed("スクリーンショット取得に失敗")
         }
       },
       onCancel: { [weak self] in
@@ -118,35 +131,10 @@ final class AppModel: ObservableObject {
 
   @MainActor
   private func startRecording(on screen: NSScreen) async {
+    // いまはスクショモード優先のため未使用
     do {
-      let displays = try await SCShareableContent.current.displays
-
-      let key = NSDeviceDescriptionKey("NSScreenNumber")
-      let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
-      let screenID = screenNumber.map { CGDirectDisplayID($0) }
-
-      let targetDisplay =
-        (screenID != nil)
-        ? displays.first(where: { $0.displayID == screenID! })
-        : nil
-
-      guard let display = targetDisplay ?? displays.first else {
-        recordingState = .failed("ディスプレイの取得に失敗しました")
-        return
-      }
-
-      let config = Recorder.Configuration(
-        display: display, selectedRectInScreenSpace: selectedRect, framesPerSecond: 15)
-      try await recorder.start(configuration: config) { [weak self] _ in
-        Log.recorder.debug("frame received")
-        // 後続でバッファリングしてGIF化する
-      }
-      recordingState = .recording
-      Log.recorder.info("recording started")
-    } catch {
-      recordingState = .failed("録画開始に失敗しました: \(error.localizedDescription)")
-      Log.recorder.error("failed to start: \(error.localizedDescription)")
-    }
+      let _ = try await SCShareableContent.current.displays
+    } catch {}
   }
 
   func quitApp() {
