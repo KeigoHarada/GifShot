@@ -11,4 +11,10 @@ final class ClipboardService {
     pb.clearContents()
     pb.setData(png, forType: .png)
   }
+
+  func copyGIF(data: Data) {
+    let pb = NSPasteboard.general
+    pb.clearContents()
+    pb.setData(data, forType: .gif)
+  }
 }

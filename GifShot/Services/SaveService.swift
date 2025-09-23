@@ -30,4 +30,14 @@ final class SaveService {
     try png.write(to: url)
     return url
   }
+
+  func saveGIF(data: Data) throws -> URL {
+    let dir = try ensureDirectory()
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+    let name = "GifShot_\(formatter.string(from: Date())).gif"
+    let url = dir.appendingPathComponent(name)
+    try data.write(to: url)
+    return url
+  }
 }

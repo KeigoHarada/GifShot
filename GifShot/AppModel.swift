@@ -33,6 +33,10 @@ final class AppModel: ObservableObject {
   private var activeOverlayIndex: Int?
 
   private var selectedRect: CGRect?
+  private var currentScreenFrame: CGRect?
+  private var currentDisplayID: CGDirectDisplayID?
+  private var capturedFrames: [CGImage] = []
+  private let targetFps: Int = 15
 
   init() {
     hotkeyManager = HotkeyManager(onPressed: { [weak self] in
@@ -70,7 +74,7 @@ final class AppModel: ObservableObject {
       Log.recorder.info("Stop recording requested")
       recorder.stop()
       recordingState = .encoding
-      recordingState = .idle
+      encodeAndFinish()
     case .encoding:
       break
     }
@@ -116,32 +120,18 @@ final class AppModel: ObservableObject {
         onComplete: { [weak self] rect in
           guard let self = self else { return }
           self.selectedRect = rect
+          self.currentScreenFrame = frame
+          let key = NSDeviceDescriptionKey("NSScreenNumber")
+          let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
+          self.currentDisplayID = screenNumber.map { CGDirectDisplayID($0) }
+
           Log.overlay.info(
             "Selection completed rect=\(NSStringFromRect(rect)) on screen=\(NSStringFromRect(frame))"
           )
           self.mouseMonitor.stop()
           self.hideOverlays()
-
-          let key = NSDeviceDescriptionKey("NSScreenNumber")
-          let screenNumber = (screen.deviceDescription[key] as? NSNumber)?.uint32Value
-          let displayID = screenNumber.map { CGDirectDisplayID($0) }
-
           Task { @MainActor in
-            do {
-              let result = try await self.screenshotService.capture(
-                rectInScreenSpace: rect,
-                displayID: displayID ?? 0,
-                screenFrame: frame
-              )
-              let url = try self.saveService.savePNG(image: result.image)
-              self.clipboardService.copyPNG(image: result.image)
-              self.notifier.notifySaved(fileURL: url)
-              self.recordingState = .completed(url)
-              Log.app.info("screenshot saved: \(url.path)")
-            } catch {
-              self.recordingState = .failed("スクリーンショットに失敗: \(error.localizedDescription)")
-              Log.app.error("screenshot failed: \(error.localizedDescription)")
-            }
+            await self.startRecordingStream()
           }
         },
         onCancel: { [weak self] in
@@ -177,6 +167,69 @@ final class AppModel: ObservableObject {
     }
     overlayItems.removeAll()
     activeOverlayIndex = nil
+  }
+
+  @MainActor
+  private func startRecordingStream() async {
+    guard let displayID = currentDisplayID, let screenFrame = currentScreenFrame else {
+      recordingState = .failed("ディスプレイ情報が不正です")
+      return
+    }
+    do {
+      let displays = try await SCShareableContent.current.displays
+      guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first else {
+        recordingState = .failed("ディスプレイの取得に失敗しました")
+        return
+      }
+      capturedFrames.removeAll(keepingCapacity: true)
+      let config = Recorder.Configuration(display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
+      try await recorder.start(configuration: config) { [weak self] cgImage in
+        guard let self = self, let selection = self.selectedRect, let screenFrame = self.currentScreenFrame else { return }
+        // 選択領域をピクセル座標に変換してクロップ
+        let width = CGFloat(cgImage.width)
+        let height = CGFloat(cgImage.height)
+        let scaleX = width / screenFrame.width
+        let scaleY = height / screenFrame.height
+        let x = (selection.minX - screenFrame.minX) * scaleX
+        let y = (selection.minY - screenFrame.minY) * scaleY
+        let w = selection.width * scaleX
+        let h = selection.height * scaleY
+        let cropRect = CGRect(x: floor(x), y: floor(y), width: floor(w), height: floor(h))
+        if let cropped = cgImage.cropping(to: cropRect) {
+          self.capturedFrames.append(cropped)
+        }
+      }
+      recordingState = .recording
+      Log.recorder.info("recording started")
+    } catch {
+      recordingState = .failed("録画開始に失敗しました: \(error.localizedDescription)")
+      Log.recorder.error("failed to start: \(error.localizedDescription)")
+    }
+  }
+
+  private func encodeAndFinish() {
+    guard !capturedFrames.isEmpty else {
+      recordingState = .failed("フレームがありません")
+      return
+    }
+    let frameDelay = 1.0 / Double(targetFps)
+    let encoder = GifEncoder(frameDelay: frameDelay)
+    encoder.start(expectedFrameCount: capturedFrames.count)
+    for frame in capturedFrames { encoder.addFrame(frame) }
+    guard let data = encoder.finalizeData() else {
+      recordingState = .failed("GIF生成に失敗")
+      return
+    }
+    do {
+      let url = try saveService.saveGIF(data: data)
+      clipboardService.copyGIF(data: data)
+      notifier.notifySaved(fileURL: url)
+      recordingState = .completed(url)
+      Log.app.info("gif saved: \(url.path)")
+    } catch {
+      recordingState = .failed("保存に失敗: \(error.localizedDescription)")
+    }
+    capturedFrames.removeAll(keepingCapacity: false)
   }
 
   @MainActor
