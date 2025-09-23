@@ -111,7 +111,7 @@ final class SelectionCaptureView: NSView {
   private func convertRectToScreen(_ rect: NSRect) -> NSRect {
     let originInWindow = convert(rect.origin, to: nil)
     let windowRect = NSRect(origin: originInWindow, size: rect.size)
-    return window?.convertRect(toScreen: windowRect) ?? windowRect
+    return window?.convertToScreen(windowRect) ?? windowRect
   }
 
   override func draw(_ dirtyRect: NSRect) {
