@@ -38,24 +38,6 @@ final class SaveService {
     }
   }
 
-  func savePNG(image: NSImage) throws -> URL {
-    let dir = try ensureDirectory()
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-    let name = "GifShot_\(formatter.string(from: Date())).png"
-    let url = dir.appendingPathComponent(name)
-
-    guard let tiff = image.tiffRepresentation,
-      let rep = NSBitmapImageRep(data: tiff),
-      let png = rep.representation(using: .png, properties: [:])
-    else {
-      throw NSError(
-        domain: "SaveService", code: -1, userInfo: [NSLocalizedDescriptionKey: "PNG変換に失敗"])
-    }
-    try png.write(to: url)
-    return url
-  }
-
   func saveGIF(data: Data) throws -> URL {
     let dir = try ensureDirectory()
     let formatter = DateFormatter()
@@ -90,7 +72,7 @@ final class SaveService {
 
   private func pickDirectory(initial: URL) -> URL? {
     var pickedURL: URL?
-    let presentPanel = {
+    DispatchQueue.main.sync {
       let panel = NSOpenPanel()
       panel.prompt = "選択"
       panel.message = "保存先フォルダを選択してください"
@@ -102,11 +84,6 @@ final class SaveService {
       panel.nameFieldStringValue = initial.lastPathComponent
       NSApp.activate(ignoringOtherApps: true)
       if panel.runModal() == .OK, let url = panel.url { pickedURL = url }
-    }
-    if Thread.isMainThread {
-      presentPanel()
-    } else {
-      DispatchQueue.main.sync { presentPanel() }
     }
     return pickedURL
   }

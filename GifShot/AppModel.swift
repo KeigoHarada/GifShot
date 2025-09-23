@@ -18,7 +18,6 @@ final class AppModel: ObservableObject {
 
   private var hotkeyManager: HotkeyManager?
   private let recorder = Recorder()
-  private let screenshotService = ScreenshotService()
   private let saveService = SaveService()
   private let clipboardService = ClipboardService()
   private let mouseMonitor = MouseEventMonitor()
@@ -194,18 +193,14 @@ final class AppModel: ObservableObject {
     }
     do {
       let displays = try await SCShareableContent.current.displays
-      guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first
-      else {
+      guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first else {
         recordingState = .failed("ディスプレイの取得に失敗しました")
         return
       }
       capturedFrames.removeAll(keepingCapacity: true)
-      let config = Recorder.Configuration(
-        display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
+      let config = Recorder.Configuration(display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
       try await recorder.start(configuration: config) { [weak self] cgImage in
-        guard let self = self, let selection = self.selectedRect,
-          let screenFrame = self.currentScreenFrame
-        else { return }
+        guard let self = self, let selection = self.selectedRect, let screenFrame = self.currentScreenFrame else { return }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
         let scaleX = width / screenFrame.width
@@ -213,11 +208,9 @@ final class AppModel: ObservableObject {
         let w = max(1, round(selection.width * scaleX))
         let h = max(1, round(selection.height * scaleY))
         let x = max(0, round((selection.minX - screenFrame.minX) * scaleX))
-        // CGImageの原点（上基準）に合わせてYを反転
         let yFromBottom = (selection.minY - screenFrame.minY) * scaleY
         let y = max(0, round(height - yFromBottom - h))
-        let cropRect = CGRect(
-          x: min(x, width - 1), y: min(y, height - 1), width: min(w, width), height: min(h, height))
+        let cropRect = CGRect(x: min(x, width - 1), y: min(y, height - 1), width: min(w, width), height: min(h, height))
         if let cropped = cgImage.cropping(to: cropRect) {
           self.capturedFrames.append(cropped)
         }
@@ -264,16 +257,5 @@ final class AppModel: ObservableObject {
       recordingState = .failed("保存に失敗: \(error.localizedDescription)")
     }
     capturedFrames.removeAll(keepingCapacity: false)
-  }
-
-  @MainActor
-  private func startRecording(on screen: NSScreen) async {
-    do {
-      let _ = try await SCShareableContent.current.displays
-    } catch {}
-  }
-
-  func quitApp() {
-    NSApp.terminate(nil)
   }
 }
