@@ -6,16 +6,9 @@ final class HotkeyManager {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
     private let onPressed: () -> Void
-    private let store = HotkeyStore()
 
     init(onPressed: @escaping () -> Void) {
         self.onPressed = onPressed
-    }
-
-    @discardableResult
-    func registerFromStore() -> Bool {
-        let cfg = store.load()
-        return register(keyCode: cfg.keyCode, modifiers: cfg.modifiersCarbon)
     }
 
     @discardableResult
@@ -38,11 +31,6 @@ final class HotkeyManager {
             Log.hotkey.error("RegisterEventHotKey failed: \(statusRegister)")
             return false
         }
-    }
-
-    func saveAndRegister(keyCode: UInt32, modifiers: UInt32) {
-        store.save(HotkeyConfig(keyCode: keyCode, modifiersCarbon: modifiers))
-        _ = register(keyCode: keyCode, modifiers: modifiers)
     }
 
     func unregister() {

@@ -41,12 +41,8 @@ final class AppModel: ObservableObject {
         self?.toggleRecording()
       }
     })
-    let ok = hotkeyManager?.registerFromStore() ?? false
+    let ok = hotkeyManager?.register() ?? false
     Log.hotkey.info("Register hotkey result: \(ok)")
-  }
-
-  func updateHotkey(keyCode: UInt32, modifiers: UInt32) {
-    hotkeyManager?.saveAndRegister(keyCode: keyCode, modifiers: modifiers)
   }
 
   deinit {

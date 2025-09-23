@@ -12,7 +12,6 @@ struct GifShotApp: App {
     @StateObject private var appModel = AppModel()
     private let saveService = SaveService()
     private let notifier = NotifierService()
-    @State private var showHotkeySheet = false
 
     init() {
         notifier.requestAuthorization()
@@ -27,7 +26,6 @@ struct GifShotApp: App {
                 Button(appModel.isRecording ? "録画停止" : "録画開始") {
                     appModel.toggleRecording()
                 }
-                Button("ショートカットを変更…") { showHotkeySheet = true }
                 Button("保存フォルダを開く") {
                     if let dir = try? saveService.ensureDirectory() {
                         Log.app.info("open dir: \(dir.path)")
@@ -42,11 +40,6 @@ struct GifShotApp: App {
                 }
             }
             .padding(8)
-            .sheet(isPresented: $showHotkeySheet) {
-                HotkeyCaptureView { keyCode, mods in
-                    appModel.updateHotkey(keyCode: keyCode, modifiers: mods)
-                }
-            }
         }
         WindowGroup {
             ContentView()
