@@ -191,20 +191,24 @@ final class AppModel: ObservableObject {
 
   @MainActor
   private func startRecordingStream() async {
-    guard let displayID = currentDisplayID, let screenFrame = currentScreenFrame else {
+    guard let displayID = currentDisplayID, currentScreenFrame != nil else {
       recordingState = .failed("ディスプレイ情報が不正です")
       return
     }
     do {
       let displays = try await SCShareableContent.current.displays
-      guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first else {
+      guard let display = displays.first(where: { $0.displayID == displayID }) ?? displays.first
+      else {
         recordingState = .failed("ディスプレイの取得に失敗しました")
         return
       }
       capturedFrames.removeAll(keepingCapacity: true)
-      let config = Recorder.Configuration(display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
+      let config = Recorder.Configuration(
+        display: display, selectedRectInScreenSpace: nil, framesPerSecond: targetFps)
       try await recorder.start(configuration: config) { [weak self] cgImage in
-        guard let self = self, let selection = self.selectedRect, let screenFrame = self.currentScreenFrame else { return }
+        guard let self = self, let selection = self.selectedRect,
+          let screenFrame = self.currentScreenFrame
+        else { return }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
         let scaleX = width / screenFrame.width
@@ -214,7 +218,8 @@ final class AppModel: ObservableObject {
         let x = max(0, round((selection.minX - screenFrame.minX) * scaleX))
         let yFromBottom = (selection.minY - screenFrame.minY) * scaleY
         let y = max(0, round(height - yFromBottom - h))
-        let cropRect = CGRect(x: min(x, width - 1), y: min(y, height - 1), width: min(w, width), height: min(h, height))
+        let cropRect = CGRect(
+          x: min(x, width - 1), y: min(y, height - 1), width: min(w, width), height: min(h, height))
         if let cropped = cgImage.cropping(to: cropRect) {
           self.capturedFrames.append(cropped)
         }
