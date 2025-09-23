@@ -91,18 +91,17 @@ final class AppModel: ObservableObject {
         self.selectedRect = rect
         Log.overlay.info("Selection completed rect=\(NSStringFromRect(rect))")
         self.hideOverlay()
-        // スクショ撮影
-        if let result = self.screenshotService.capture(rectInScreenSpace: rect, on: screen) {
+        Task { @MainActor in
           do {
+            let result = try await self.screenshotService.capture(rectInScreenSpace: rect, on: screen)
             let url = try self.saveService.savePNG(image: result.image)
             self.clipboardService.copyPNG(image: result.image)
             self.recordingState = .completed(url)
             Log.app.info("screenshot saved: \(url.path)")
           } catch {
-            self.recordingState = .failed("保存に失敗: \(error.localizedDescription)")
+            self.recordingState = .failed("スクリーンショットに失敗: \(error.localizedDescription)")
+            Log.app.error("screenshot failed: \(error.localizedDescription)")
           }
-        } else {
-          self.recordingState = .failed("スクリーンショット取得に失敗")
         }
       },
       onCancel: { [weak self] in
