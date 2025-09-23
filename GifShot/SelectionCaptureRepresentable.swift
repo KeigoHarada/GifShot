@@ -81,7 +81,7 @@ final class SelectionCaptureView: NSView {
   }
 
   private func convertGlobalToView(_ global: NSPoint) -> NSPoint {
-    let windowPoint = convertFromScreen(NSRect(origin: global, size: .zero)).origin
+    let windowPoint = window?.convertPoint(fromScreen: global) ?? global
     let p = convert(windowPoint, from: nil)
     return p
   }
@@ -103,16 +103,15 @@ final class SelectionCaptureView: NSView {
       onCancel()
       return
     }
-    let rectInScreen = convertToScreen(rectInView)
+    let rectInScreen = convertRectToScreen(rectInView)
     Log.overlay.info("mouseUp rect: \(NSStringFromRect(rectInScreen))")
     onComplete(rectInScreen)
   }
 
-  private func convertToScreen(_ rect: NSRect) -> NSRect {
-    var r = rect
-    r.origin = convert(r.origin, to: nil)
-    r = convertToScreen(r)
-    return r
+  private func convertRectToScreen(_ rect: NSRect) -> NSRect {
+    let originInWindow = convert(rect.origin, to: nil)
+    let windowRect = NSRect(origin: originInWindow, size: rect.size)
+    return window?.convertRect(toScreen: windowRect) ?? windowRect
   }
 
   override func draw(_ dirtyRect: NSRect) {
