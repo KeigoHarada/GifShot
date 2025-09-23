@@ -3,8 +3,8 @@ import AppKit
 
 final class SaveService {
   func ensureDirectory() throws -> URL {
-    let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-    let dir = downloads.appendingPathComponent("GifShot", isDirectory: true)
+    let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+    let dir = appSupport.appendingPathComponent("GifShot", isDirectory: true)
     if !FileManager.default.fileExists(atPath: dir.path) {
       try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     }
